@@ -111,14 +111,14 @@ function ajax_update_download_counter() {
 add_action('wp_enqueue_scripts', 'enqueue_download_counter_assets');
 
 function enqueue_download_counter_assets() {
-    // Only load on download pages
-    if (is_page_template('download-page.php') || is_page_template('custom-dl-redirect.php')) {
+    // Only load on download pages (not on redirect pages)
+    if (is_page_template('download-page.php') || strpos($_SERVER['REQUEST_URI'], '/download/') !== false) {
         wp_enqueue_script('jquery');
         wp_enqueue_script(
             'download-counter-ajax',
-            get_template_directory_uri() . '/js/download-counter.js',
+            get_template_directory_uri() . '/js/download-counter-simple.js',
             array('jquery'),
-            '1.0.0',
+            '1.0.1',
             true
         );
         

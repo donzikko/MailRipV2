@@ -3,15 +3,20 @@
 ## Overview
 This solution converts your blocking download counter function into an efficient AJAX-based system that runs in the background, significantly improving server performance and user experience.
 
+**Flow Understanding:**
+- `/dl/` links are redirect URLs (fast, no counter updates)
+- `site.com/appname/download/` is where the counter is actually triggered
+- Counter updates now happen via AJAX on the download page
+
 ## Key Improvements
 
-### 1. **Non-blocking Downloads** 
-- `/dl/` redirects now happen instantly without waiting for counter updates
-- Uses WordPress cron for background processing
-- Eliminates server resource hogging
+### 1. **Non-blocking Redirects** 
+- `/dl/` redirects now happen instantly with no processing delays
+- No counter updates on redirect URLs (keeps them lightning fast)
+- Eliminates server resource hogging on redirect pages
 
 ### 2. **AJAX Counter Updates**
-- Download page template uses AJAX to update counters asynchronously  
+- Download page (`/download/`) uses AJAX to update counters asynchronously  
 - Real-time counter display updates
 - Better user experience with faster page loads
 
@@ -114,15 +119,17 @@ The JavaScript supports multiple trigger methods:
 ## Performance Benefits
 
 ### Before Optimization:
-- `/dl/` redirects: ~200-500ms (blocking database operations)
-- Download pages: Heavy server load during counter updates
+- Download pages (`/download/`): ~200-500ms (blocking database operations)
+- Heavy server load during counter updates
 - Potential timeouts under high traffic
+- `/dl/` redirects were already fast (just redirects)
 
 ### After Optimization:
-- `/dl/` redirects: ~50-100ms (instant redirects)
-- Download pages: Non-blocking AJAX updates
+- `/dl/` redirects: Remain fast (no changes needed - they're just redirects)
+- Download pages (`/download/`): ~50-100ms initial load + background AJAX updates
+- Non-blocking counter updates via AJAX
 - Better scalability under high traffic
-- Background processing prevents resource hogging
+- No more server resource hogging on download pages
 
 ## Monitoring & Debugging
 

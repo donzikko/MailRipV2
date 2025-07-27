@@ -28,13 +28,14 @@ jQuery(document).ready(function($) {
         });
     }
     
-    // For download page template - trigger when page loads
-    if ($('body').hasClass('page-template-download-page')) {
+    // For download page template (site.com/appname/download/) - trigger when page loads
+    if ($('body').hasClass('page-template-download-page') || window.location.pathname.includes('/download/')) {
         var postId = $('body').data('post-id') || window.downloadPostId;
         if (postId) {
             // Delay the AJAX call slightly to not block page rendering
             setTimeout(function() {
                 updateDownloadCounter(postId);
+                console.log('Download counter triggered for post ID:', postId);
             }, 500);
         }
     }
@@ -47,13 +48,13 @@ jQuery(document).ready(function($) {
         }
     });
     
-    // Alternative method: Auto-trigger based on URL pattern
-    if (window.location.pathname.includes('/dl/')) {
-        // Extract post ID from URL or get from global variable
+    // Auto-detect download page by URL pattern (fallback method)
+    if (window.location.pathname.match(/\/[^\/]+\/download\/?$/)) {
         var postId = window.downloadPostId;
         if (postId) {
             setTimeout(function() {
                 updateDownloadCounter(postId);
+                console.log('Download counter triggered via URL pattern for post ID:', postId);
             }, 300);
         }
     }

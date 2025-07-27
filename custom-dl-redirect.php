@@ -58,27 +58,13 @@ $final_redirect_url = $redirect_url;
 log_download_activity($post_id, $final_redirect_url, $dl_type);
 
 // ===========================
-// OPTIMIZED COUNTER UPDATE
+// FAST REDIRECT (NO COUNTER UPDATE HERE)
 // ===========================
 
-// Instead of blocking the redirect, schedule the counter update as a background task
-// This approach is much faster and doesn't delay the user's download
+// Since this is just a redirect, we don't update the counter here
+// The counter will be updated on the actual download page (site.com/appname/download/)
+// This keeps the redirect super fast and lightweight
 
-// Option 1: Use WordPress cron (recommended for high traffic)
-wp_schedule_single_event(time(), 'update_download_counter_background', array($post_id));
-
-// Option 2: Alternative - Use async flag for immediate but non-blocking update
-// update_download_counter_with_ip_check($post_id, true);
-
-// Add the cron handler to functions.php if using Option 1
-add_action('update_download_counter_background', function($post_id) {
-    update_download_counter_with_ip_check($post_id);
-});
-
-// ===========================
-// FAST REDIRECT
-// ===========================
-
-// 🚀 Perform the final redirect immediately - no more blocking!
+// 🚀 Perform the final redirect immediately - no blocking operations!
 wp_redirect($final_redirect_url);
 exit;

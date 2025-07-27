@@ -97,6 +97,9 @@ if (!is_allowed_url($file_url)) {
 
 log_download_activity($post_id, $file_url, 'DIRECT');
 
+// NOTE: Counter update is now handled via AJAX in JavaScript
+// This prevents blocking the page load and improves performance
+
 // ===========================
 // TELEGRAM LINK (optional)
 // ===========================

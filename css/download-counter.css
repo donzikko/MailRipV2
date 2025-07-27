@@ -1,0 +1,57 @@
+.download-container {
+    max-width: 600px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.download-stats {
+    background: #e9ecef;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+    text-align: center;
+    font-weight: bold;
+}
+
+.download-counter {
+    color: #007cba;
+    font-size: 1.2em;
+}
+
+.download-links {
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.download-link {
+    display: inline-block;
+    padding: 12px 24px;
+    background: #007cba;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.download-link:hover {
+    background: #005a87;
+    color: white;
+}
+
+.telegram-link {
+    text-align: center;
+    margin-top: 1rem;
+}
+
+.telegram-link a {
+    color: #0088cc;
+    text-decoration: none;
+}
+
+.telegram-link a:hover {
+    text-decoration: underline;
+}

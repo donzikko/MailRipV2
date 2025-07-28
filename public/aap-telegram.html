@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telegram Bot Manager</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body { padding: 2rem; }
+    .running-badge { background-color: #198754; }
+    .stopped-badge { background-color: #dc3545; }
+    .inactive-badge { background-color: #6c757d; }
+  </style>
+</head>
+<body>
+  <h1 class="mb-4">Telegram Bot Manager</h1>
+
+  <!-- Alerts -->
+  <div id="alert-container"></div>
+
+  <!-- Global controls -->
+  <div class="mb-3">
+    <button class="btn btn-success me-1" id="btnStartManager">Start All</button>
+    <button class="btn btn-warning me-1" id="btnRestartManager">Restart All</button>
+    <button class="btn btn-danger me-1" id="btnStopManager">Stop All</button>
+    <button class="btn btn-info" id="btnReloadConfig">Reload Config</button>
+  </div>
+
+  <!-- Bots table -->
+  <table class="table table-bordered align-middle" id="botsTable">
+    <thead class="table-light">
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Running</th>
+        <th>Active Flag</th>
+        <th>Group</th>
+        <th>Description</th>
+        <th class="text-center">Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal fade" id="botModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form id="botForm">
+          <div class="modal-header">
+            <h5 class="modal-title">Bot Details</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body row g-3">
+            <input type="hidden" id="originalId" />
+            <div class="col-md-6">
+              <label class="form-label">ID</label>
+              <input type="text" class="form-control" id="botId" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Name</label>
+              <input type="text" class="form-control" id="botName" required />
+            </div>
+            <div class="col-12">
+              <label class="form-label">WordPress Search URL</label>
+              <input type="url" class="form-control" id="botUrl" placeholder="https://example.com/wp-json/wp/v2/posts" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Bot Token</label>
+              <input type="text" class="form-control" id="botKey" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Group ID</label>
+              <input type="text" class="form-control" id="botGroupId" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Active</label>
+              <select class="form-select" id="botActive">
+                <option value="true">true</option>
+                <option value="false">false</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Description</label>
+              <input type="text" class="form-control" id="botDescription" />
+            </div>
+            <div class="col-12">
+              <label class="form-label">Admin IDs (comma)</label>
+              <input type="text" class="form-control" id="botAdminIds" placeholder="123,456" />
+            </div>
+            <div class="col-12">
+              <label class="form-label">Admin Usernames (comma)</label>
+              <input type="text" class="form-control" id="botAdminUsernames" placeholder="admin1,admin2" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary w-100">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-outline-primary" id="btnAddNew">Add New Bot</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const alertContainer = document.getElementById('alert-container');
+    const showAlert = (msg, type = 'info', timeout = 4000) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = `alert alert-${type} alert-dismissible fade show`;
+      wrapper.role = 'alert';
+      wrapper.innerHTML = `${msg}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+      alertContainer.appendChild(wrapper);
+      if (timeout) setTimeout(() => wrapper.classList.remove('show'), timeout);
+    };
+
+    // Elements
+    const botsTableBody = document.querySelector('#botsTable tbody');
+
+    // Bootstrap modal
+    const botModalEl = document.getElementById('botModal');
+    const botModal = new bootstrap.Modal(botModalEl);
+
+    const botForm = document.getElementById('botForm');
+
+    let currentConfig = [];
+    let currentStatus = {};
+
+    async function fetchConfig() {
+      const res = await fetch('/api/aap-telegram-bot/config');
+      const data = await res.json();
+      currentConfig = data.configs || [];
+    }
+
+    async function fetchStatus() {
+      const res = await fetch('/api/aap-telegram-bot/status');
+      const data = await res.json();
+      currentStatus = data;
+    }
+
+    function renderTable() {
+      botsTableBody.innerHTML = '';
+      currentConfig.forEach(cfg => {
+        const statusEntry = (currentStatus.bots || []).find(b => b.id === cfg.id) || {};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${cfg.id}</td>
+          <td>${cfg.name}</td>
+          <td>
+            <span class="badge ${statusEntry.running ? 'running-badge' : 'stopped-badge'}">
+              ${statusEntry.running ? 'running' : 'stopped'}
+            </span>
+          </td>
+          <td>
+            <span class="badge ${cfg.active ? 'running-badge' : 'inactive-badge'}">
+              ${cfg.active}
+            </span>
+          </td>
+          <td>${cfg.group_id}</td>
+          <td>${cfg.description || ''}</td>
+          <td class="text-center">
+            <div class="btn-group btn-group-sm" role="group">
+              <button class="btn btn-success" data-action="start" data-id="${cfg.id}" title="Start"><i class="bi bi-play-fill"></i></button>
+              <button class="btn btn-danger" data-action="stop" data-id="${cfg.id}" title="Stop"><i class="bi bi-stop-fill"></i></button>
+              <button class="btn btn-warning" data-action="restart" data-id="${cfg.id}" title="Restart"><i class="bi bi-arrow-clockwise"></i></button>
+              <button class="btn btn-secondary" data-action="enable-disable" data-id="${cfg.id}" title="Toggle Active">
+                ${cfg.active ? 'Disable' : 'Enable'}
+              </button>
+              <button class="btn btn-outline-primary" data-action="edit" data-id="${cfg.id}" title="Edit"><i class="bi bi-pencil-square"></i></button>
+            </div>
+          </td>`;
+        botsTableBody.appendChild(tr);
+      });
+    }
+
+    async function refresh() {
+      await Promise.all([fetchConfig(), fetchStatus()]);
+      renderTable();
+    }
+
+    // Action dispatcher
+    botsTableBody.addEventListener('click', async e => {
+      if (!e.target.closest('button')) return;
+      const btn = e.target.closest('button');
+      const id = btn.dataset.id;
+      const action = btn.dataset.action;
+      try {
+        let res;
+        switch (action) {
+          case 'start':
+            res = await fetch(`/api/aap-telegram-bot/${id}/start`, { method: 'POST' });
+            break;
+          case 'stop':
+            res = await fetch(`/api/aap-telegram-bot/${id}/stop`, { method: 'POST' });
+            break;
+          case 'restart':
+            res = await fetch(`/api/aap-telegram-bot/${id}/restart`, { method: 'POST' });
+            break;
+          case 'enable-disable':
+            const cfg = currentConfig.find(c => c.id === id);
+            const endpoint = cfg.active ? 'disable' : 'enable';
+            res = await fetch(`/api/aap-telegram-bot/${id}/${endpoint}`, { method: 'POST' });
+            break;
+          case 'edit':
+            openEditModal(id);
+            return;
+        }
+        const data = await res.json();
+        showAlert(data.message || (data.success ? 'Success' : data.error), data.success ? 'success' : 'danger');
+        await refresh();
+      } catch (err) {
+        console.error(err);
+        showAlert(err.message, 'danger');
+      }
+    });
+
+    // Add new button
+    document.getElementById('btnAddNew').addEventListener('click', () => {
+      openEditModal();
+    });
+
+    function openEditModal(id) {
+      const isEdit = !!id;
+      const cfg = isEdit ? currentConfig.find(c => c.id === id) : {};
+      document.querySelector('.modal-title').textContent = isEdit ? 'Edit Bot' : 'Add Bot';
+      document.getElementById('originalId').value = id || '';
+      document.getElementById('botId').value = cfg.id || '';
+      document.getElementById('botName').value = cfg.name || '';
+      document.getElementById('botUrl').value = cfg.url || '';
+      document.getElementById('botKey').value = cfg.bot_key || '';
+      document.getElementById('botGroupId').value = cfg.group_id || '';
+      document.getElementById('botActive').value = cfg.active !== false;
+      document.getElementById('botDescription').value = cfg.description || '';
+      document.getElementById('botAdminIds').value = (cfg.admin_ids || []).join(',');
+      document.getElementById('botAdminUsernames').value = (cfg.admin_usernames || []).join(',');
+      botModal.show();
+    }
+
+    botForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const originalId = document.getElementById('originalId').value;
+      const newCfg = {
+        id: document.getElementById('botId').value.trim(),
+        name: document.getElementById('botName').value.trim(),
+        url: document.getElementById('botUrl').value.trim(),
+        bot_key: document.getElementById('botKey').value.trim(),
+        group_id: document.getElementById('botGroupId').value.trim(),
+        active: document.getElementById('botActive').value === 'true',
+        description: document.getElementById('botDescription').value.trim(),
+        admin_ids: document.getElementById('botAdminIds').value.split(',').map(s => s.trim()).filter(Boolean).map(Number),
+        admin_usernames: document.getElementById('botAdminUsernames').value.split(',').map(s => s.trim()).filter(Boolean)
+      };
+
+      // Update currentConfig array
+      const idx = currentConfig.findIndex(c => c.id === originalId || c.id === newCfg.id);
+      if (idx >= 0) {
+        currentConfig[idx] = newCfg;
+      } else {
+        currentConfig.push(newCfg);
+      }
+
+      try {
+        const res = await fetch('/api/aap-telegram-bot/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ config: { bots: currentConfig, logging: { enabled: true } } })
+        });
+        const data = await res.json();
+        botModal.hide();
+        showAlert(data.message || (data.success ? 'Saved' : data.error), data.success ? 'success' : 'danger');
+        await refresh();
+      } catch (err) {
+        showAlert(err.message, 'danger');
+      }
+    });
+
+    // Global control buttons
+    document.getElementById('btnStartManager').onclick = () => fetchAction('start');
+    document.getElementById('btnStopManager').onclick = () => fetchAction('stop');
+    document.getElementById('btnRestartManager').onclick = () => fetchAction('restart');
+    document.getElementById('btnReloadConfig').onclick = () => fetchAction('reload');
+
+    async function fetchAction(action) {
+      try {
+        const res = await fetch(`/api/aap-telegram-bot/${action}`, { method: 'POST' });
+        const data = await res.json();
+        showAlert(data.message || (data.success ? 'Success' : data.error), data.success ? 'success' : 'danger');
+        await refresh();
+      } catch (err) { showAlert(err.message, 'danger'); }
+    }
+
+    // Initial load
+    refresh();
+  </script>
+</body>
+</html>

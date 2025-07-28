@@ -49,6 +49,24 @@ app.post('/bots/:id/restart', async (req, res) => {
   }
 });
 
+app.post('/bots/:id/disable', async (req, res) => {
+  try {
+    const result = await botManager.disableBotById(req.params.id);
+    res.json(result);
+  } catch (e) {
+    res.status(400).json({ success: false, error: e.message });
+  }
+});
+
+app.post('/bots/:id/enable', async (req, res) => {
+  try {
+    const result = await botManager.enableBotById(req.params.id);
+    res.json(result);
+  } catch (e) {
+    res.status(400).json({ success: false, error: e.message });
+  }
+});
+
 // --------------- GLOBAL CONTROL --------------------
 app.post('/reload', async (req, res) => {
   try {

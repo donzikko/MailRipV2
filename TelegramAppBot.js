@@ -405,6 +405,44 @@ class TelegramAppBot {
 
   async restartBotById(botId) { await this.stopBotById(botId); await new Promise(r => setTimeout(r, 1000)); if (!this.activeConfigs.has(botId)) throw new Error(`No active configuration found for bot ${botId}`); const cfg = this.activeConfigs.get(botId); await this.startBot(cfg); return { success: true, message: `Bot ${botId} restarted` }; }
 
+  async disableBotById(botId) {
+    // Persistently disable a bot: stop it and flip its "active" flag in the JSON config
+    await this.stopBotById(botId);
+
+    // Read, mutate, and persist configuration file
+    const config = JSON.parse(await fsPromises.readFile(this.configPath, 'utf8'));
+    const botEntry = config.bots.find(b => b.id === botId);
+    if (!botEntry) {
+      throw new Error(`Bot ${botId} not found in configuration file`);
+    }
+    if (botEntry.active === false) {
+      return { success: false, message: `Bot ${botId} is already disabled` };
+    }
+    botEntry.active = false;
+    await this.saveConfig(config);
+    this.activeConfigs.delete(botId);
+    await this.log(`Bot ${botId} disabled (persisted to config)`);
+    return { success: true, message: `Bot ${botId} disabled and saved` };
+  }
+
+  async enableBotById(botId) {
+    // Persistently enable a bot: set "active": true and start it
+    const config = JSON.parse(await fsPromises.readFile(this.configPath, 'utf8'));
+    const botEntry = config.bots.find(b => b.id === botId);
+    if (!botEntry) {
+      throw new Error(`Bot ${botId} not found in configuration file`);
+    }
+    if (botEntry.active === true) {
+      return { success: false, message: `Bot ${botId} is already enabled` };
+    }
+    botEntry.active = true;
+    await this.saveConfig(config);
+    this.activeConfigs.set(botId, botEntry);
+    const startResult = await this.startBotById(botId);
+    await this.log(`Bot ${botId} enabled (persisted to config)`);
+    return { success: true, message: startResult.message };
+  }
+
   async stopAll() {
     await this.log('Stopping all bots...');
     await Promise.allSettled([...this.bots.keys()].map(id => this.stopBot(id)));

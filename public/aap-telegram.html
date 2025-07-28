@@ -1,1 +1,245 @@
 
+(cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF'
+diff --git a/public/aap-telegram.html b/public/aap-telegram.html
+--- a/public/aap-telegram.html
++++ b/public/aap-telegram.html
+@@ -0,0 +1,237 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>Telegram Bot Manager</title>
++  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
++  <style>
++    /* ============ Base styles from example ============ */
++    *{margin:0;padding:0;box-sizing:border-box}
++    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f7fa;color:#333;line-height:1.6}
++    .container{max-width:1200px;margin:2rem auto;padding:0 1rem}
++    .header{text-align:center;margin-bottom:2rem}
++    .header h1{font-size:2rem;color:#2563eb;margin-bottom:.5rem}
++    .header p{color:#666}
++    .app{background:#fff;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,.1);overflow:hidden}
++    .tabs{display:flex;background:#2563eb;overflow-x:auto;-webkit-overflow-scrolling:touch}
++    .tab{flex:1;min-width:max-content;padding:1rem;color:#fff;cursor:pointer;text-align:center;transition:background .2s;white-space:nowrap}
++    .tab:hover{background:rgba(255,255,255,.1)}
++    .tab.active{background:rgba(255,255,255,.2)}
++    .content{padding:2rem}
++    .tab-pane{display:none}
++    .tab-pane.active{display:block}
++    .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem}
++    .search-box{flex:1;min-width:200px;max-width:400px;position:relative}
++    .search-input{width:100%;padding:.75rem 1rem .75rem 2.5rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem}
++    .search-input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
++    .search-icon{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:#6b7280}
++    .toolbar-actions{display:flex;gap:.5rem;flex-wrap:wrap}
++    .btn{padding:.75rem 1rem;border:none;border-radius:6px;cursor:pointer;font-size:.875rem;font-weight:500;transition:all .2s;display:inline-flex;align-items:center;gap:.5rem}
++    .btn-primary{background:#2563eb;color:#fff}
++    .btn-primary:hover{background:#1d4ed8}
++    .btn-secondary{background:#6b7280;color:#fff}
++    .btn-secondary:hover{background:#4b5563}
++    .btn-success{background:#10b981;color:#fff}
++    .btn-success:hover{background:#059669}
++    .btn-danger{background:#ef4444;color:#fff}
++    .btn-danger:hover{background:#dc2626}
++    .btn-sm{padding:.5rem .75rem;font-size:.75rem}
++    .bots-grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(350px,1fr))}
++    .bot-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1.5rem;transition:all .2s;position:relative}
++    .bot-card:hover{border-color:#2563eb;box-shadow:0 4px 12px rgba(37,99,235,.1)}
++    .bot-card.inactive{opacity:.6;background:#f3f4f6}
++    .bot-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem}
++    .bot-info h3{color:#1f2937;font-size:1.125rem;margin-bottom:.25rem}
++    .bot-id{background:#dbeafe;color:#2563eb;padding:.125rem .5rem;border-radius:.75rem;font-size:.625rem;font-weight:bold}
++    .bot-status{display:flex;align-items:center;gap:.25rem;font-size:.75rem;font-weight:500}
++    .status-running{color:#10b981}
++    .status-stopped{color:#ef4444}
++    .bot-details{margin-bottom:1rem;font-size:.875rem}
++    .detail-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem}
++    .detail-row i{width:16px;color:#6b7280}
++    .bot-actions{display:flex;gap:.5rem;justify-content:flex-end}
++    .stats{display:flex;gap:2rem;margin-bottom:1.5rem;flex-wrap:wrap}
++    .stat-item{display:flex;align-items:center;gap:.5rem;font-size:.875rem;font-weight:500}
++    .stat-number{background:#2563eb;color:#fff;padding:.25rem .75rem;border-radius:1rem;font-size:.75rem}
++    .loader{text-align:center;padding:2rem;display:none}
++    .spinner{width:32px;height:32px;border:3px solid #f3f4f6;border-top:3px solid #2563eb;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 1rem}
++    @keyframes spin{to{transform:rotate(360deg)}}
++    .empty-state{text-align:center;padding:3rem;color:#6b7280;grid-column:1/-1}
++    .toast{position:fixed;top:20px;right:20px;padding:1rem 1.5rem;border-radius:8px;color:#fff;font-weight:500;z-index:1001;transform:translateX(100%);transition:transform .3s}
++    .toast.show{transform:translateX(0)}
++    .toast.success{background:#10b981}
++    .toast.error{background:#ef4444}
++    .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
++    .modal.active{display:flex}
++    .modal-content{background:#fff;border-radius:12px;padding:2rem;width:90%;max-width:500px;max-height:80vh;overflow-y:auto}
++    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid #e5e7eb}
++    .modal-header h2{color:#1f2937;font-size:1.25rem}
++    .close-btn{background:none;border:none;font-size:1.5rem;color:#6b7280;cursor:pointer}
++    .close-btn:hover{color:#374151}
++    .form-group{margin-bottom:1rem}
++    .form-label{display:block;margin-bottom:.5rem;font-weight:500;color:#374151}
++    .form-input{width:100%;padding:.75rem;border:1px solid #d1d5db;border-radius:6px;font-size:.875rem}
++    .form-input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
++    .form-input.error{border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.1)}
++    .form-error{color:#ef4444;font-size:.75rem;margin-top:.25rem;display:none}
++    .form-checkbox{display:flex;align-items:center;gap:.5rem}
++    .form-actions{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid #e5e7eb}
++    @media(max-width:768px){.content{padding:1rem}.bots-grid{grid-template-columns:1fr}.toolbar{flex-direction:column;align-items:stretch}}
++  </style>
++</head>
++<body>
++  <div class="container">
++    <div class="header">
++      <h1><i class="fas fa-robot"></i> Telegram Bot Manager</h1>
++      <p>Manage Telegram app-request bots and their configuration</p>
++    </div>
++
++    <div class="app">
++      <div class="tabs">
++        <div class="tab active" data-tab="bots"><i class="fas fa-list"></i> Bots List</div>
++        <div class="tab" data-tab="add"><i class="fas fa-plus"></i> Add Bot</div>
++        <div class="tab" data-tab="settings"><i class="fas fa-cog"></i> Settings</div>
++      </div>
++
++      <div class="content">
++        <!-- Bots List -->
++        <div class="tab-pane active" id="bots">
++          <div class="toolbar">
++            <div class="search-box">
++              <i class="fas fa-search search-icon"></i>
++              <input type="text" class="search-input" id="searchInput" placeholder="Search bots by name, ID, group…" />
++            </div>
++            <div class="toolbar-actions">
++              <button class="btn btn-secondary" id="refreshBtn"><i class="fas fa-sync-alt"></i> Refresh</button>
++              <button class="btn btn-success" id="startAllBtn"><i class="fas fa-play"></i> Start All</button>
++              <button class="btn btn-danger" id="stopAllBtn"><i class="fas fa-stop"></i> Stop All</button>
++              <button class="btn btn-primary" id="reloadBtn"><i class="fas fa-redo"></i> Reload Config</button>
++              <button class="btn btn-primary" id="addBotBtn"><i class="fas fa-plus"></i> Add Bot</button>
++            </div>
++          </div>
++          <div class="stats" id="botStats">
++            <div class="stat-item"><i class="fas fa-robot" style="color:#2563eb"></i> Total: <span class="stat-number" id="totalBots">0</span></div>
++            <div class="stat-item"><i class="fas fa-check-circle" style="color:#10b981"></i> Running: <span class="stat-number" id="runningBots">0</span></div>
++            <div class="stat-item"><i class="fas fa-pause-circle" style="color:#ef4444"></i> Stopped: <span class="stat-number" id="stoppedBots">0</span></div>
++          </div>
++          <div class="loader" id="botsLoader"><div class="spinner"></div><p>Loading bots…</p></div>
++          <div id="botsContainer" class="bots-grid"></div>
++        </div>
++        <!-- Add Bot -->
++        <div class="tab-pane" id="add">
++          <h2 style="margin-bottom:1.5rem;color:#1f2937">Add New Bot</h2>
++          <form id="addBotForm">
++            <div class="form-group"><label class="form-label" for="newBotId">Bot ID *</label><input type="text" class="form-input" id="newBotId" required /><div class="form-error" id="newBotIdError"></div></div>
++            <div class="form-group"><label class="form-label" for="newBotName">Name *</label><input type="text" class="form-input" id="newBotName" required /><div class="form-error" id="newBotNameError"></div></div>
++            <div class="form-group"><label class="form-label" for="newBotUrl">WordPress Search URL *</label><input type="url" class="form-input" id="newBotUrl" placeholder="https://example.com/wp-json/wp/v2/posts" required /><div class="form-error" id="newBotUrlError"></div></div>
++            <div class="form-group"><label class="form-label" for="newBotKey">Bot Token *</label><input type="text" class="form-input" id="newBotKey" required /><div class="form-error" id="newBotKeyError"></div></div>
++            <div class="form-group"><label class="form-label" for="newBotGroupId">Group ID *</label><input type="text" class="form-input" id="newBotGroupId" required /><div class="form-error" id="newBotGroupIdError"></div></div>
++            <div class="form-group"><label class="form-label" for="newBotDescription">Description</label><input type="text" class="form-input" id="newBotDescription" /></div>
++            <div class="form-group"><label class="form-label" for="newBotAdminIds">Admin IDs (comma)</label><input type="text" class="form-input" id="newBotAdminIds" placeholder="123,456" /></div>
++            <div class="form-group"><label class="form-label" for="newBotAdminUsernames">Admin Usernames (comma)</label><input type="text" class="form-input" id="newBotAdminUsernames" placeholder="admin1,admin2" /></div>
++            <div class="form-group"><div class="form-checkbox"><input type="checkbox" id="newBotActive" checked /><label for="newBotActive">Bot is active</label></div></div>
++            <div class="form-actions"><button type="button" class="btn btn-secondary" id="resetAddFormBtn"><i class="fas fa-undo"></i> Reset</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Add Bot</button></div>
++          </form>
++        </div>
++        <!-- Settings -->
++        <div class="tab-pane" id="settings">
++          <h2 style="margin-bottom:1.5rem;color:#1f2937">Backup &amp; Restore</h2>
++          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1.5rem;margin-bottom:1.5rem">
++            <div style="display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn btn-success" id="exportBtn"><i class="fas fa-download"></i> Export Config</button><button class="btn btn-secondary" id="importBtn"><i class="fas fa-upload"></i> Import Config</button><input type="file" id="importFile" accept=".json" class="hidden" /></div>
++          </div>
++          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1.5rem"><h3 style="margin-bottom:1rem;color:#991b1b">Danger Zone</h3><p style="color:#7f1d1d;margin-bottom:1rem;font-size:.875rem">These actions cannot be undone.</p><button class="btn btn-danger" id="clearAllBtn"><i class="fas fa-trash-alt"></i> Clear All Bots</button></div>
++        </div>
++      </div>
++    </div>
++  </div>
++
++  <!-- Edit Bot Modal -->
++  <div class="modal" id="editModal"><div class="modal-content"><div class="modal-header"><h2>Edit Bot</h2><button class="close-btn" id="closeEditModal">&times;</button></div><form id="editBotForm"><input type="hidden" id="editBotOriginalId" /><div class="form-group"><label class="form-label" for="editBotId">Bot ID *</label><input type="text" class="form-input" id="editBotId" required /><div class="form-error" id="editBotIdError"></div></div><div class="form-group"><label class="form-label" for="editBotName">Name *</label><input type="text" class="form-input" id="editBotName" required /><div class="form-error" id="editBotNameError"></div></div><div class="form-group"><label class="form-label" for="editBotUrl">Search URL *</label><input type="url" class="form-input" id="editBotUrl" required /><div class="form-error" id="editBotUrlError"></div></div><div class="form-group"><label class="form-label" for="editBotKey">Bot Token *</label><input type="text" class="form-input" id="editBotKey" required /><div class="form-error" id="editBotKeyError"></div></div><div class="form-group"><label class="form-label" for="editBotGroupId">Group ID *</label><input type="text" class="form-input" id="editBotGroupId" required /><div class="form-error" id="editBotGroupIdError"></div></div><div class="form-group"><label class="form-label" for="editBotDescription">Description</label><input type="text" class="form-input" id="editBotDescription" /></div><div class="form-group"><label class="form-label" for="editBotAdminIds">Admin IDs (comma)</label><input type="text" class="form-input" id="editBotAdminIds" /></div><div class="form-group"><label class="form-label" for="editBotAdminUsernames">Admin Usernames (comma)</label><input type="text" class="form-input" id="editBotAdminUsernames" /></div><div class="form-group"><div class="form-checkbox"><input type="checkbox" id="editBotActive" /><label for="editBotActive">Bot is active</label></div></div><div class="form-actions"><button type="button" class="btn btn-secondary" id="cancelEditBtn">Cancel</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button></div></form></div></div>
++
++  <!-- Delete Modal -->
++  <div class="modal" id="deleteModal"><div class="modal-content"><div class="modal-header"><h2>Confirm Delete</h2><button class="close-btn" id="closeDeleteModal">&times;</button></div><p style="margin-bottom:1.5rem;color:#374151">Are you sure you want to delete bot "<strong id="deleteBotName"></strong>"?</p><p style="margin-bottom:1.5rem;color:#7f1d1d;font-size:.875rem">This action cannot be undone.</p><div class="form-actions"><button type="button" class="btn btn-secondary" id="cancelDeleteBtn">Cancel</button><button type="button" class="btn btn-danger" id="confirmDeleteBtn"><i class="fas fa-trash"></i> Delete Bot</button></div></div></div>
++
++  <script>
++    const API_BASE = window.location.origin;
++    // State
++    let fullConfig = { bots: [], logging: {} };
++    let statusData = {};
++    let filteredBots = [];
++    let currentEditId = null;
++    let currentDeleteId = null;
++
++    // Elements
++    const tabs = document.querySelectorAll('.tab');
++    const tabPanes = document.querySelectorAll('.tab-pane');
++    const searchInput = document.getElementById('searchInput');
++    const botsContainer = document.getElementById('botsContainer');
++    const botsLoader = document.getElementById('botsLoader');
++    const totalBots = document.getElementById('totalBots');
++    const runningBots = document.getElementById('runningBots');
++    const stoppedBots = document.getElementById('stoppedBots');
++    // Buttons
++    document.getElementById('refreshBtn').onclick = loadBots;
++    document.getElementById('addBotBtn').onclick = () => switchTab('add');
++    document.getElementById('startAllBtn').onclick = () => actionGlobal('start');
++    document.getElementById('stopAllBtn').onclick = () => actionGlobal('stop');
++    document.getElementById('reloadBtn').onclick = () => actionGlobal('reload');
++    // Tab switching
++    tabs.forEach(tab => tab.addEventListener('click', () => {tabs.forEach(t=>t.classList.remove('active'));tabPanes.forEach(p=>p.classList.remove('active'));tab.classList.add('active');document.getElementById(tab.dataset.tab).classList.add('active');}));
++    const switchTab = name => document.querySelector(`[data-tab="${name}"]`).click();
++
++    // Search
++    searchInput.addEventListener('input', filterBots);
++
++    // Loader
++    const showLoader = show => botsLoader.style.display = show ? 'block' : 'none';
++
++    // Toast
++    function toast(msg,type='success'){const e=document.createElement('div');e.className=`toast ${type}`;e.textContent=msg;document.body.appendChild(e);setTimeout(()=>e.classList.add('show'));setTimeout(()=>{e.classList.remove('show');setTimeout(()=>e.remove(),300)},3000)}
++
++    async function api(path,opts={}){const res=await fetch(API_BASE+path,{headers:{'Content-Type':'application/json'},...opts});if(!res.ok)throw new Error((await res.json()).error||res.statusText);return res.json();}
++
++    async function loadBots(){showLoader(true);try{const [cfg,status]=await Promise.all([api('/api/aap-telegram-bot/config'),api('/api/aap-telegram-bot/status')]);fullConfig=cfg.configs?{bots:cfg.configs,logging:{}}:{bots:[],logging:{}};statusData=status;filteredBots=[...fullConfig.bots];renderBots();toast('Bots loaded');}catch(err){toast(err.message,'error');}finally{showLoader(false);}}
++
++    function renderBots(){if(filteredBots.length===0){botsContainer.innerHTML='<div class="empty-state"><i class="fas fa-robot"></i><h3>No bots found</h3></div>';updateStats();return;}botsContainer.innerHTML=filteredBots.map(b=>{const st=(statusData.bots||[]).find(x=>x.id===b.id)||{};return `<div class="bot-card ${!b.active?'inactive':''}"><div class="bot-header"><div class="bot-info"><h3>${escape(b.name)}</h3><span class="bot-id">${escape(b.id)}</span></div><div class="bot-status ${st.running?'status-running':'status-stopped'}"><i class="fas fa-${st.running?'check':'times'}-circle"></i>${st.running?'Running':'Stopped'}</div></div><div class="bot-details"><div class="detail-row"><i class="fas fa-link"></i><span>${escape(truncate(b.url,50))}</span></div><div class="detail-row"><i class="fas fa-users"></i><span>Group: ${escape(b.group_id)}</span></div><div class="detail-row"><i class="fas fa-comment-dots"></i><span>${escape(b.description||'')}</span></div></div><div class="bot-actions"><button class="btn btn-sm btn-success" onclick="botAction('${b.id}','start')"><i class="fas fa-play"></i></button><button class="btn btn-sm btn-danger" onclick="botAction('${b.id}','stop')"><i class="fas fa-stop"></i></button><button class="btn btn-sm btn-secondary" onclick="botAction('${b.id}','restart')"><i class="fas fa-sync-alt"></i></button><button class="btn btn-sm btn-secondary" onclick="toggleActive('${b.id}')"><i class="fas fa-${b.active?'pause':'play'}"></i></button><button class="btn btn-sm btn-primary" onclick="openEdit('${b.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-danger" onclick="confirmDelete('${b.id}')"><i class="fas fa-trash"></i></button></div></div>`}).join('');updateStats();}
++
++    function updateStats(){const total=fullConfig.bots.length;const running=(statusData.bots||[]).filter(b=>b.running).length;totalBots.textContent=total;runningBots.textContent=running;stoppedBots.textContent=total-running;}
++
++    function filterBots(){const q=searchInput.value.toLowerCase().trim();filteredBots=q?fullConfig.bots.filter(b=>b.id.toLowerCase().includes(q)||b.name.toLowerCase().includes(q)||String(b.group_id).includes(q)):fullConfig.bots;renderBots();}
++
++    async function botAction(id,action){try{await api(`/api/aap-telegram-bot/${id}/${action}`,{method:'POST'});toast(`${action} ok`);loadBots();}catch(e){toast(e.message,'error');}}
++    async function toggleActive(id){const b=fullConfig.bots.find(x=>x.id===id);if(!b)return;await botAction(id,b.active?'disable':'enable');}
++
++    // Add form
++    document.getElementById('addBotForm').addEventListener('submit',async e=>{e.preventDefault();const bot={id:g('newBotId'),name:g('newBotName'),url:g('newBotUrl'),bot_key:g('newBotKey'),group_id:g('newBotGroupId'),description:g('newBotDescription'),active:document.getElementById('newBotActive').checked,admin_ids:splitNums('newBotAdminIds'),admin_usernames:splitStrs('newBotAdminUsernames')};if(!bot.id||!bot.name||!bot.url||!bot.bot_key||!bot.group_id){toast('Missing required','error');return;}fullConfig.bots.push(bot);await saveConfig('Bot added');resetAdd();loadBots();});
++    const resetAdd=()=>document.getElementById('addBotForm').reset();document.getElementById('resetAddFormBtn').onclick=resetAdd;
++
++    async function saveConfig(successMsg){try{await api('/api/aap-telegram-bot/config',{method:'PUT',body:JSON.stringify({config:{bots:fullConfig.bots,logging:fullConfig.logging}})});toast(successMsg);}catch(e){toast(e.message,'error');throw e;}}
++
++    // Edit
++    function openEdit(id){const b=fullConfig.bots.find(x=>x.id===id);if(!b)return;currentEditId=id;set('editBotOriginalId',id);set('editBotId',b.id);set('editBotName',b.name);set('editBotUrl',b.url);set('editBotKey',b.bot_key);set('editBotGroupId',b.group_id);set('editBotDescription',b.description||'');set('editBotAdminIds',(b.admin_ids||[]).join(','));set('editBotAdminUsernames',(b.admin_usernames||[]).join(','));document.getElementById('editBotActive').checked=b.active;document.getElementById('editModal').classList.add('active');}
++    document.getElementById('closeEditModal').onclick=()=>document.getElementById('editModal').classList.remove('active');document.getElementById('cancelEditBtn').onclick=()=>document.getElementById('editModal').classList.remove('active');
++    document.getElementById('editBotForm').addEventListener('submit',async e=>{e.preventDefault();const bot={id:g('editBotId'),name:g('editBotName'),url:g('editBotUrl'),bot_key:g('editBotKey'),group_id:g('editBotGroupId'),description:g('editBotDescription'),active:document.getElementById('editBotActive').checked,admin_ids:splitNums('editBotAdminIds'),admin_usernames:splitStrs('editBotAdminUsernames')};const idx=fullConfig.bots.findIndex(x=>x.id===currentEditId);if(idx>=0)fullConfig.bots[idx]=bot;await saveConfig('Bot updated');document.getElementById('editModal').classList.remove('active');loadBots();});
++
++    // Delete
++    function confirmDelete(id){const b=fullConfig.bots.find(x=>x.id===id);if(!b)return;currentDeleteId=id;document.getElementById('deleteBotName').textContent=b.name;document.getElementById('deleteModal').classList.add('active');}
++    document.getElementById('closeDeleteModal').onclick=()=>document.getElementById('deleteModal').classList.remove('active');document.getElementById('cancelDeleteBtn').onclick=()=>document.getElementById('deleteModal').classList.remove('active');document.getElementById('confirmDeleteBtn').onclick=async ()=>{fullConfig.bots=fullConfig.bots.filter(b=>b.id!==currentDeleteId);await saveConfig('Bot deleted');document.getElementById('deleteModal').classList.remove('active');loadBots();};
++
++    // Settings backup/restore
++    document.getElementById('exportBtn').onclick=()=>{const data=JSON.stringify(fullConfig.bots,null,2);const blob=new Blob([data],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='telegram-bots-'+new Date().toISOString().split('T')[0]+'.json';a.click();URL.revokeObjectURL(url);toast('Exported');};
++    document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();document.getElementById('importFile').onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=async ev=>{try{const bots=JSON.parse(ev.target.result);if(!Array.isArray(bots))throw new Error('Invalid format');fullConfig.bots=bots;await saveConfig('Imported');loadBots();}catch(err){toast(err.message,'error');}};reader.readAsText(file);};
++    document.getElementById('clearAllBtn').onclick=async()=>{if(!confirm('Delete ALL bots?'))return;fullConfig.bots=[];await saveConfig('Cleared');loadBots();};
++
++    // Utilities
++    function g(id){return document.getElementById(id).value.trim();}
++    function set(id,val){document.getElementById(id).value=val;}
++    const splitNums=id=>g(id)?g(id).split(',').map(s=>parseInt(s.trim())).filter(Boolean):[];
++    const splitStrs=id=>g(id)?g(id).split(',').map(s=>s.trim()).filter(Boolean):[];
++    const escape=str=>String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
++    const truncate=(s,n)=>s.length<=n?s:s.slice(0,n-3)+'…';
++    async function actionGlobal(act){try{await api(`/api/aap-telegram-bot/${act}`,{method:'POST'});toast(act+' done');loadBots();}catch(e){toast(e.message,'error');}}
++
++    document.addEventListener('DOMContentLoaded',loadBots);
++  </script>
++</body>
++</html>
+EOF
+)
